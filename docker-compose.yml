@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_store
+    environment:
+      POSTGRES_DB: store_db
+      POSTGRES_USER: store_user
+      POSTGRES_PASSWORD: store_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:latest
+    container_name: redis_store
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    container_name: django_store
+    environment:
+      - DEBUG=False
+      - DJANGO_SECRET_KEY=your_secret_key
+      - DJANGO_ALLOWED_HOSTS=yourdomain.com,localhost,127.0.0.1
+    volumes:
+      - .:/app
+      - static_data:/static  # Монтируем статику
+      - media_data:/media    # Монтируем медиа
+    expose:
+      - "8000"
+    depends_on:
+      - db
+      - redis
+    command: gunicorn store.wsgi:application --bind 0.0.0.0:8000
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx.Dockerfile
+    container_name: nginx_store
+    ports:
+      - "80:80"
+    volumes:
+      - static_data:/static  # Монтируем статику
+      - media_data:/media    # Монтируем медиа
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  static_data:
+  media_data:
